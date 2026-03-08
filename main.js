@@ -908,6 +908,90 @@
     }
     bindSettingButtonGroups();
 
+    let keyboardCursorIndex = 0;
+
+    function isTextEntryTarget(target) {
+      if (!target || typeof target !== 'object') {
+        return false;
+      }
+
+      if (target.isContentEditable) {
+        return true;
+      }
+
+      const tagName = typeof target.tagName === 'string' ? target.tagName.toUpperCase() : '';
+      return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT';
+    }
+
+    function getKeyboardIndexFromEvent(event) {
+      const eventIndex = getClickedIndex(event);
+      if (Number.isInteger(eventIndex) && eventIndex >= 0 && eventIndex <= 8) {
+        keyboardCursorIndex = eventIndex;
+        return eventIndex;
+      }
+
+      if (!Number.isInteger(keyboardCursorIndex) || keyboardCursorIndex < 0 || keyboardCursorIndex > 8) {
+        keyboardCursorIndex = 0;
+      }
+
+      return keyboardCursorIndex;
+    }
+
+    function getNextBoardIndex(index, key) {
+      const row = Math.floor(index / 3);
+      const col = index % 3;
+      let nextIndex = index;
+      if (key === 'ArrowLeft' && col > 0) {
+        nextIndex = index - 1;
+      } else if (key === 'ArrowRight' && col < 2) {
+        nextIndex = index + 1;
+      } else if (key === 'ArrowUp' && row > 0) {
+        nextIndex = index - 3;
+      } else if (key === 'ArrowDown' && row < 2) {
+        nextIndex = index + 3;
+      }
+      return nextIndex;
+    }
+
+    function focusBoardCell(index) {
+      if (typeof boardEl.querySelector !== 'function') {
+        return;
+      }
+      const nextCell = boardEl.querySelector(`.cell[data-index="${index}"]`);
+      if (nextCell && typeof nextCell.focus === 'function') {
+        nextCell.focus();
+      }
+    }
+
+    function handleBoardKeyboardInput(event) {
+      if (!event) {
+        return;
+      }
+
+      const isActivationKey = event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar';
+      const isArrowKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key);
+      if (!isActivationKey && !isArrowKey) {
+        return;
+      }
+
+      const index = getKeyboardIndexFromEvent(event);
+      if (isActivationKey) {
+        event.preventDefault();
+        handleCellSelection(index);
+        return;
+      }
+
+      event.preventDefault();
+      keyboardCursorIndex = getNextBoardIndex(index, event.key);
+      focusBoardCell(keyboardCursorIndex);
+    }
+
+    if (typeof boardEl.setAttribute === 'function') {
+      boardEl.setAttribute('tabindex', '0');
+      boardEl.setAttribute('role', 'grid');
+      boardEl.setAttribute('aria-label', 'Tic-tac-toe board');
+    }
+
     boardEl.addEventListener('click', (event) => {
       if (isComputerThinking) {
         return;
@@ -975,43 +1059,28 @@
       }, 1000);
     }
 
-    boardEl.addEventListener('keydown', (event) => {
-      const index = getClickedIndex(event);
-      if (index === null) {
-        return;
-      }
+    boardEl.addEventListener('keydown', handleBoardKeyboardInput);
 
-      if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
-        event.preventDefault();
-        handleCellSelection(index);
-        return;
-      }
-
-      const isArrowKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key);
-      if (!isArrowKey) {
-        return;
-      }
-
-      event.preventDefault();
-      const row = Math.floor(index / 3);
-      const col = index % 3;
-      let nextIndex = index;
-      if (event.key === 'ArrowLeft' && col > 0) {
-        nextIndex = index - 1;
-      } else if (event.key === 'ArrowRight' && col < 2) {
-        nextIndex = index + 1;
-      } else if (event.key === 'ArrowUp' && row > 0) {
-        nextIndex = index - 3;
-      } else if (event.key === 'ArrowDown' && row < 2) {
-        nextIndex = index + 3;
-      }
-
-      if (typeof boardEl.querySelector === 'function') {
-        const nextCell = boardEl.querySelector(`.cell[data-index="${nextIndex}"]`);
-        if (nextCell && typeof nextCell.focus === 'function') {
-          nextCell.focus();
+    if (doc && typeof doc.addEventListener === 'function') {
+      doc.addEventListener('keydown', (event) => {
+        if (!event || event.defaultPrevented) {
+          return;
         }
+        if (isTextEntryTarget(event.target)) {
+          return;
+        }
+        if (event.target === playAgainEl || event.target === newMatchEl || event.target === resetStatsEl) {
+          return;
+        }
+        handleBoardKeyboardInput(event);
+      });
+    }
+
+    boardEl.addEventListener('focus', (event) => {
+      if (!event || event.target !== boardEl) {
+        return;
       }
+      focusBoardCell(keyboardCursorIndex);
     });
 
     function startNewMatch() {

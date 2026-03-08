@@ -1704,6 +1704,85 @@ test('keyboard activation accepts Spacebar alias for move input', () => {
   global.localStorage = originalLocalStorage;
 });
 
+test('global keyboard fallback supports board moves when focus is outside board cells', () => {
+  const statusEl = createElement();
+  const boardEl = createElement();
+  const playAgainEl = createElement();
+  const newMatchEl = createElement();
+  const resetStatsEl = createElement();
+  const modeEl = createElement({ value: 'pvp' });
+  const playerNameEl = createElement({ value: 'Alex' });
+  const playerTwoNameEl = createElement({ value: 'Bailey' });
+  const playerMarkEl = createElement({ value: 'X' });
+
+  let focusedIndex = null;
+  boardEl.querySelector = (selector) => {
+    const match = selector.match(/data-index=\"(\d+)\"/);
+    if (!match) {
+      return null;
+    }
+    const index = Number(match[1]);
+    return {
+      focus() {
+        focusedIndex = index;
+      },
+    };
+  };
+
+  const doc = {
+    listeners: {},
+    addEventListener(type, handler) {
+      this.listeners[type] = handler;
+    },
+    dispatch(type, event = {}) {
+      this.listeners[type](event);
+    },
+    getElementById(id) {
+      return {
+        status: statusEl,
+        board: boardEl,
+        'play-again': playAgainEl,
+        'new-match': newMatchEl,
+        'reset-stats': resetStatsEl,
+        mode: modeEl,
+        'player-name': playerNameEl,
+        'player-two-name': playerTwoNameEl,
+        'player-mark': playerMarkEl,
+      }[id];
+    },
+  };
+
+  const originalLocalStorage = global.localStorage;
+  global.localStorage = {
+    getItem() {
+      return JSON.stringify({ mode: 'pvp' });
+    },
+    setItem() {},
+  };
+
+  initGame(doc);
+
+  let preventedArrow = false;
+  doc.dispatch('keydown', {
+    key: 'ArrowRight',
+    target: { tagName: 'BODY' },
+    preventDefault() {
+      preventedArrow = true;
+    },
+  });
+  assert.equal(preventedArrow, true);
+  assert.equal(focusedIndex, 1);
+
+  doc.dispatch('keydown', {
+    key: 'Enter',
+    target: { tagName: 'BODY' },
+    preventDefault() {},
+  });
+  assert.match(boardEl.innerHTML, /data-index=\"1\">X<\/button>/);
+
+  global.localStorage = originalLocalStorage;
+});
+
 test('index.html keeps a visible high-contrast focus indicator on board cells', () => {
   const html = fs.readFileSync('./index.html', 'utf8');
 
