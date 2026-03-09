@@ -140,7 +140,5 @@ This project is licensed under the MIT License. See the [`LICENSE`](LICENSE) fil
 
 ## Author
 
-## Author
-
 **Christopher Bolduc**  
 [LinkedIn](https://www.linkedin.com/in/christopher-david-bolduc/) • [GitHub](https://github.com/christopherbolduc)
