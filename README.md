@@ -64,7 +64,7 @@ npm run start
 ### Stats and Analytics
 - Persistent scoreboard (wins, losses, draws, streaks)
 - Persistent settings in `localStorage`
-- Analytics counters such as total rounds, total moves, and average moves per round
+- Analytics counters: rounds, moves, and draws
 
 ## Tech Stack
 
